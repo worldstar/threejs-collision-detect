@@ -1,0 +1,212 @@
+<!-- //https://threejs.org/examples/webgl_materials_texture_rotation.html -->
+
+<style type="text/css">
+  #c {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+</style>
+<canvas id="c"></canvas>
+
+<script type="module">
+  import * as THREE from '../build/three.module.js';
+  import { DragControls } from './jsm/controls/DragControls.js';
+  import { GUI } from './jsm/libs/dat.gui.module.js';
+  import { OrbitControls } from './jsm/controls/OrbitControls.js';
+  var gui;
+  var API = {
+    offsetX: 0,
+    offsetY: 0,
+    repeatX: 0.25,
+    repeatY: 0.25,
+    rotation: -1.57, // positive is counter-clockwise
+    // rotation: Math.PI / 4, // positive is counter-clockwise
+    centerX: 0.5,
+    centerY: 0.5
+  };
+  console.log(Math.PI / 4);
+  var cube;
+  function main() {
+  const canvas = document.querySelector('#c');
+  const renderer = new THREE.WebGLRenderer({canvas});
+
+  const fov = 75;
+  const aspect = 2;  // the canvas default
+  const near = 0.1;
+  const far = 5;
+  const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+  camera.position.z = 2;
+  camera.position.x = 0;
+  camera.position.y = 1;
+
+  const scene = new THREE.Scene();
+
+  const boxWidth = 1;
+  const boxHeight = 1;
+  const boxDepth = 1;
+  const geometry = new THREE.BoxBufferGeometry(boxWidth, boxHeight, boxDepth);
+
+  const cubes = [];  // just an array we can use to rotate the cubes
+  const loader = new THREE.TextureLoader();
+
+  const materials = [
+    //左視圖
+    new THREE.MeshBasicMaterial({map: loader.load('./Image/__auto_2.JPG')}),
+    //右視圖
+    new THREE.MeshBasicMaterial({map: loader.load('./Image/__auto_4.JPG')}),
+    //上視圖
+    new THREE.MeshBasicMaterial({map: loader.load('./Image/__auto_1_.jpg', function ( texture ) {
+          texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+          texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          // texture.matrix
+          //   .identity()
+          //   .translate( - API.centerX, - API.centerY )
+          //   .rotate( API.rotation )         // I don't understand how rotation can preceed scale, but it seems to be required...
+          //   .scale( API.repeatX, API.repeatY )
+          //   .translate( API.centerX, API.centerY )
+          //   .translate( API.offsetX, API.offsetY );
+          console.log(texture);
+        })}),
+    //下視圖
+    new THREE.MeshBasicMaterial({map: loader.load('./Image/__auto_.JPG')}),
+    //後視圖
+    new THREE.MeshBasicMaterial({map: loader.load('./Image/__auto_3.JPG')}),
+    //正視圖
+    new THREE.MeshBasicMaterial({map: loader.load('./Image/__auto_5.JPG')}),
+  ];
+
+  cube = new THREE.Mesh(geometry, materials);
+  scene.add(cube);
+  cubes.push(cube);  // add to our list of cubes to rotate
+  updateUvTransform();
+  initGui();
+  function resizeRendererToDisplaySize(renderer) {
+    const canvas = renderer.domElement;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    const needResize = canvas.width !== width || canvas.height !== height;
+    if (needResize) {
+      renderer.setSize(width, height, false);
+    }
+    return needResize;
+  }
+
+  function render(time) {
+    time *= 0.001;
+    // var dragControls = new DragControls(cubes, camera, renderer.domElement);
+
+    // dragControls.addEventListener('dragstart', function(event) {
+    // controls.enabled = false;
+    // renderer.render( scene, camera );
+    // });
+
+    // dragControls.addEventListener('drag', function(event) {
+    // renderer.render( scene, camera );
+    // });
+
+    // dragControls.addEventListener('dragend', function(event) {
+    // controls.enabled = true;
+    // renderer.render( scene, camera );
+    // });
+    
+    // var controls = new OrbitControls( camera, renderer.domElement );
+    // controls.addEventListener( 'change', render );
+    // controls.update();
+
+    // window.addEventListener( 'resize', onWindowResize, false );
+
+    if (resizeRendererToDisplaySize(renderer)) {
+      const canvas = renderer.domElement;
+      camera.aspect = canvas.clientWidth / canvas.clientHeight;
+      camera.updateProjectionMatrix();
+    }
+
+    // cubes.forEach((cube, ndx) => {
+    //   const speed = .2 + ndx * .1;
+    //   const rot = time * speed;
+    //   cube.rotation.x = rot;
+    //   cube.rotation.y = rot;
+    // });
+
+    renderer.render(scene, camera);
+
+    requestAnimationFrame(render);
+  }
+
+  function updateUvTransform() {
+    var texture = cube.material[2].map;
+    // texture.matrix.rotate( API.rotation )
+    if ( texture.matrixAutoUpdate === true ) {
+      // texture.offset.set( API.offsetX, API.offsetY );
+      // texture.repeat.set( API.repeatX, API.repeatY );
+      // texture.center.set( API.centerX, API.centerY );
+      texture.rotation = API.rotation; // rotation is around [ 0.5, 0.5 ]
+    } else {
+      // one way...
+      //texture.matrix.setUvTransform( API.offsetX, API.offsetY, API.repeatX, API.repeatY, API.rotation, API.centerX, API.centerY );
+      // another way...
+      texture.matrix
+          .identity()
+          .translate( - API.centerX, - API.centerY )
+          .rotate( API.rotation )         // I don't understand how rotation can preceed scale, but it seems to be required...
+          .scale( API.repeatX, API.repeatY )
+          .translate( API.centerX, API.centerY )
+          .translate( API.offsetX, API.offsetY );
+
+    }
+
+    render();
+
+  }
+
+  function onWindowResize() {
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize( window.innerWidth, window.innerHeight );
+
+    render();
+
+  }
+  function init_dragControls(){
+    var dragControls = new DragControls(cubes, camera, renderer.domElement);
+
+    dragControls.addEventListener('dragstart', function(event) {
+    controls.enabled = false;
+    renderer.render( scene, camera );
+    });
+
+    dragControls.addEventListener('drag', function(event) {
+    renderer.render( scene, camera );
+    });
+
+    dragControls.addEventListener('dragend', function(event) {
+    controls.enabled = true;
+    renderer.render( scene, camera );
+    });
+    
+    var controls = new OrbitControls( camera, renderer.domElement );
+    controls.addEventListener( 'change', render );
+    controls.update();
+
+    window.addEventListener( 'resize', onWindowResize, false );
+  }
+
+  function initGui() {
+    gui = new GUI();
+    gui.add( API, 'offsetX', 0.0, 1.0 ).name( 'offset.x' ).onChange( updateUvTransform );
+    gui.add( API, 'offsetY', 0.0, 1.0 ).name( 'offset.y' ).onChange( updateUvTransform );
+    gui.add( API, 'repeatX', 0.25, 2.0 ).name( 'repeat.x' ).onChange( updateUvTransform );
+    gui.add( API, 'repeatY', 0.25, 2.0 ).name( 'repeat.y' ).onChange( updateUvTransform );
+    gui.add( API, 'rotation', - 2.0, 2.0 ).name( 'rotation' ).onChange( updateUvTransform );
+    gui.add( API, 'centerX', 0.0, 1.0 ).name( 'center.x' ).onChange( updateUvTransform );
+    gui.add( API, 'centerY', 0.0, 1.0 ).name( 'center.y' ).onChange( updateUvTransform );
+  }
+requestAnimationFrame(render);
+  init_dragControls();
+}
+
+main();
+</script>
